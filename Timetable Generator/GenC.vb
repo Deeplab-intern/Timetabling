@@ -266,7 +266,6 @@ Module Program
 
         Return timetable
     End Function
-
     Sub AllocateConsecutivePeriods(timetable As List(Of TimetableEntry), subjects As List(Of Subject),
                                allocatedHours As Dictionary(Of String, Integer), teacherAssignments As Dictionary(Of String, HashSet(Of String)), classID As String)
         Dim random As New Random()
@@ -297,6 +296,7 @@ Module Program
     End Sub
 
 
+
     Function GetAvailableSubjects(subjects As List(Of Subject), allocatedHours As Dictionary(Of String, Integer),
                                   subjectsAssignedToday As HashSet(Of String), classID As String) As List(Of Subject)
         Return subjects.Where(Function(s) s.ClassID = classID AndAlso
@@ -308,7 +308,7 @@ Module Program
                        day As String, period As Integer) As (Subject As String, StaffID As String)?
         For Each subject In availableSubjects
             Dim teacherBusy = teacherAssignments.ContainsKey(subject.StaffID) AndAlso
-                          teacherAssignments(subject.StaffID).Contains($"{day}_{period}")
+                          teacherAssignments(subject.StaffID).Any(Function(t) t.StartsWith($"{day}_"))
 
             If Not teacherBusy Then
                 Return (subject.Name, subject.StaffID)
@@ -316,6 +316,7 @@ Module Program
         Next
         Return Nothing
     End Function
+
 
 
     Sub UpdateAllocatedHours(allocatedHours As Dictionary(Of String, Integer), subject As String)
@@ -350,8 +351,10 @@ Module Program
         If Not teacherAssignments.ContainsKey(staffID) Then
             teacherAssignments(staffID) = New HashSet(Of String)()
         End If
+
         teacherAssignments(staffID).Add($"{day}_{period}")
     End Sub
+
 
     Sub PrintTimetable(timetable As List(Of TimetableEntry), classID As String)
         Console.WriteLine($"Timetable for Class {classID}:")
