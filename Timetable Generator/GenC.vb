@@ -268,11 +268,11 @@ Module Program
     End Function
 
     Sub AllocateConsecutivePeriods(timetable As List(Of TimetableEntry), subjects As List(Of Subject),
-                                   allocatedHours As Dictionary(Of String, Integer), teacherAssignments As Dictionary(Of String, HashSet(Of String)), classID As String)
+                               allocatedHours As Dictionary(Of String, Integer), teacherAssignments As Dictionary(Of String, HashSet(Of String)), classID As String)
         Dim random As New Random()
 
         For Each entry In timetable
-            For i As Integer = 0 To 8 ' (only up to period 8)
+            For i As Integer = 0 To 8
                 If entry.Subjects(i).Subject = "Free" AndAlso entry.Subjects(i + 1).Subject = "Free" Then
                     Dim availableSubjects = GetAvailableSubjects(subjects, allocatedHours, New HashSet(Of String)(), classID)
                     availableSubjects = availableSubjects.OrderBy(Function(x) random.Next()).ToList()
@@ -280,18 +280,22 @@ Module Program
                     Dim selectedSubject = availableSubjects.FirstOrDefault()
 
                     If selectedSubject IsNot Nothing Then
-                        entry.Subjects(i) = (selectedSubject.Name, selectedSubject.StaffID)
-                        entry.Subjects(i + 1) = (selectedSubject.Name, selectedSubject.StaffID)
+                        If Not teacherAssignments.ContainsKey(selectedSubject.StaffID) OrElse
+                       Not teacherAssignments(selectedSubject.StaffID).Contains($"{entry.Day}_{i}") AndAlso
+                       Not teacherAssignments(selectedSubject.StaffID).Contains($"{entry.Day}_{i + 1}") Then
 
-                        TrackTeacherAssignment(teacherAssignments, selectedSubject.StaffID, entry.Day, i)
-                        TrackTeacherAssignment(teacherAssignments, selectedSubject.StaffID, entry.Day, i + 1)
-
-                        UpdateAllocatedHours(allocatedHours, selectedSubject.Name)
+                            entry.Subjects(i) = (selectedSubject.Name, selectedSubject.StaffID)
+                            entry.Subjects(i + 1) = (selectedSubject.Name, selectedSubject.StaffID)
+                            TrackTeacherAssignment(teacherAssignments, selectedSubject.StaffID, entry.Day, i)
+                            TrackTeacherAssignment(teacherAssignments, selectedSubject.StaffID, entry.Day, i + 1)
+                            UpdateAllocatedHours(allocatedHours, selectedSubject.Name)
+                        End If
                     End If
                 End If
             Next
         Next
     End Sub
+
 
     Function GetAvailableSubjects(subjects As List(Of Subject), allocatedHours As Dictionary(Of String, Integer),
                                   subjectsAssignedToday As HashSet(Of String), classID As String) As List(Of Subject)
@@ -301,15 +305,18 @@ Module Program
     End Function
 
     Function AssignSubject(availableSubjects As List(Of Subject), teacherAssignments As Dictionary(Of String, HashSet(Of String)),
-                           day As String, period As Integer) As (Subject As String, StaffID As String)?
+                       day As String, period As Integer) As (Subject As String, StaffID As String)?
         For Each subject In availableSubjects
             Dim teacherBusy = teacherAssignments.ContainsKey(subject.StaffID) AndAlso
-                              teacherAssignments(subject.StaffID).Contains($"{day}_{period}")
+                          teacherAssignments(subject.StaffID).Contains($"{day}_{period}")
 
-            If Not teacherBusy Then Return (subject.Name, subject.StaffID)
+            If Not teacherBusy Then
+                Return (subject.Name, subject.StaffID)
+            End If
         Next
         Return Nothing
     End Function
+
 
     Sub UpdateAllocatedHours(allocatedHours As Dictionary(Of String, Integer), subject As String)
         If allocatedHours.ContainsKey(subject) Then
